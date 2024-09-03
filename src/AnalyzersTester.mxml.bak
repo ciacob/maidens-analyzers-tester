@@ -1,0 +1,324 @@
+<?xml version="1.0"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark"
+                       initialize="_onInitialize(event)" width="800" height="600"
+                       displayStateChange="_onDisplayStateChange(event)">
+    <fx:Script>
+        <![CDATA[
+        import eu.claudius.iacob.testing.TestRunner;
+        import eu.claudius.iacob.testing.common.ListingEvent;
+        import eu.claudius.iacob.testing.common.TestRunnerEvent;
+        import eu.claudius.iacob.testing.common.TestingUtils;
+        import eu.claudius.iacob.testing.interfaces.IRunnable;
+        import eu.claudius.iacob.testing.interfaces.ITestRunner;
+
+        import mx.events.FlexEvent;
+
+        import org.apache.flex.collections.ArrayList;
+
+        import ro.ciacob.desktop.debug.Logger;
+        import ro.ciacob.desktop.debug.LoggerConfig;
+
+        import tests.melody.balance.BasicCase1;
+        import tests.melody.balance.BasicCase2;
+        import tests.melody.balance.MelodicBalanceTest;
+        import tests.melody.balance.PerfectPrimeCase1;
+        import tests.melody.balance.RestsCase1;
+
+        // UI-relates constants
+        //        private static const COLOR_PASSED:Number = 0x01b211;
+        //        private static const COLOR_FAILED:Number = 0xff3333;
+        [Bindable]
+        private var _messages:String = '';
+
+        [Bindable]
+        private var _listDS:ArrayList = new ArrayList;
+
+        // Logging-related constants/variables
+        private static const LOGS_DIR_NAME:String = 'logs';
+        private static const LOGGING_ENABLED:Boolean = false;
+        private var _logger:Logger;
+
+        // Tests-related constants/variables
+        //        private static const MAX_SCORE:Number = 100;
+        //        private static const AUGMENTED_OR_QUARTAL_SCORE:Number = 60;
+        //        private static const DIMINISHED_SCORE:Number = 55;
+        // private const $this:Object = this;
+        //        private var _consonanceAnalyzer:IntrinsicConsonance;
+
+        /**
+         * Hack to force dynamic widths in the page to recalculate on maximize/restore.
+         */
+        private function _onDisplayStateChange(event:NativeWindowDisplayStateEvent):void {
+            var onRedraw:Function = function (event:FlexEvent):void {
+                removeEventListener(FlexEvent.UPDATE_COMPLETE, onRedraw);
+                width += 0.1;
+            }
+            addEventListener(FlexEvent.UPDATE_COMPLETE, onRedraw);
+        }
+
+        /**
+         * Main Entry Point.
+         * Executed after child components are initialized but not measured or drawn on screen.
+         * @param event
+         */
+        private function _onInitialize(event:FlexEvent):void {
+
+            // Initialize logger
+            var appDirParentTokens:Array = File.applicationDirectory.nativePath.split(File.separator);
+            appDirParentTokens.length -= 1;
+            appDirParentTokens.push(LOGS_DIR_NAME);
+            var logsDir:File = new File(appDirParentTokens.join(File.separator));
+            const LOGGING_MODE:int = (LoggerConfig.CONSOLE | LoggerConfig.FILE);
+            var config:LoggerConfig = new LoggerConfig(LOGGING_ENABLED, LOGGING_MODE, logsDir);
+            _logger = new Logger(config);
+
+            // Initialize UI
+            statusText.setStyle('fontSize', 15);
+            statusText.setStyle('fontFamily', 'Consolas');
+
+            // Initialize test runner
+            var _runner:ITestRunner = new TestRunner('Analyzers Test Runners', 'Runs tests to help proof the various analyzers used by MAIDENS.');
+            var melodicBalance:MelodicBalanceTest = new MelodicBalanceTest();
+            melodicBalance.testCases.push(
+                    new BasicCase1//,
+//                    new BasicCase2,
+//                    new RestsCase1,
+//                    new PerfectPrimeCase1
+            );
+            _runner.runnables.push(
+//                    new IntrinsicConsonanceRelational(),
+//                    new IntrinsicConsonanceFixed()
+                    melodicBalance
+            );
+
+            _runner.addEventListener(ListingEvent.LIST_READY, _onListReady);
+            _runner.addEventListener(TestRunnerEvent.CASE_DONE, _onEvent);
+            _runner.addEventListener(TestRunnerEvent.ALL_DONE, _onEvent);
+
+            // Run tests
+            _runner.execute();
+//            _runAll([
+//                [HindemithCompliance.TESTS, HindemithCompliance.name],
+//                [HarmonyPreFilter.TESTS, HarmonyPreFilter.name]
+//            ]);
+        }
+
+        private function _onEvent(event:TestRunnerEvent):void {
+            _print(TestingUtils.formatOutput(event));
+        }
+
+        private function _onListReady(event:ListingEvent):void {
+//            trace('----- LISTING READY --------');
+//            trace(JSON.stringify(event.queue, null, '\t'));
+
+            _listDS.removeAll();
+            event.queue.forEach(function (item : IRunnable, ... etc) : void {
+                _listDS.addItem({label: item.name});
+            });
+        }
+
+        //        private function _runAll(suites:Array):void {
+        //            var allPassed = true;
+        //            for (var i:int = 0; i < suites.length; i++) {
+        //                var test:Array = (suites[i] as Array);
+        //                var testPayload:Array = (test[0] as Array);
+        //                var testName:String = (test[1] as String);
+        //                _print('');
+        //                _print('-----');
+        //                _print('Now running test suite:');
+        //                _print(testName);
+        //                _print('-----');
+        //                var suitePassed:Boolean = _runTestSuite(testPayload, testName);
+        //                if (!suitePassed) {
+        //                    allPassed = false;
+        //                }
+        //                _print('');
+        //            }
+        //            statusText.text = ('OVERALL, TESTS ' + (allPassed ? 'PASSED.' : 'FAILED.'));
+        //            statusText.setStyle('color', allPassed ? COLOR_PASSED : COLOR_FAILED);
+        //        }
+
+        //        private function _runTestSuite(testsToRun:Array, testsName:String):Boolean {
+        //            _consonanceAnalyzer = null;
+        //            var testsSuitePassed:Boolean = true;
+        //            if (testsToRun.length) {
+        //                // Compute scores
+        //                testsToRun.forEach(function (testRule:Object, ...etc):void {
+        //                    if (testRule.pitches && testRule.pitches.length) {
+        //                        if (!_consonanceAnalyzer) {
+        //                            _consonanceAnalyzer = new IntrinsicConsonance();
+        //                        }
+        //                        var musicUnit:IMusicUnit = CommonMusicUtils.midiPitchesToMusicUnit(testRule.pitches as Array);
+        //                        _consonanceAnalyzer.analyze(musicUnit, null, null, null);
+        //                        testRule.result = musicUnit.analysisScores.getValueFor(ParameterNames.INTRINSIC_CONSONANCE);
+        //                        testRule.hasUpperRoot = musicUnit.analysisScores.getValueFor('is_root_upper');
+        //                    }
+        //                    testRule.executed = true;
+        //
+        //                });
+        //                // Validate scores (run acceptance criteria tests)
+        //                var numFailingRules:int = 0;
+        //                const failingRules:Array = [];
+        //                var localFailingRuleInfo:String;
+        //                var localFailingCriteria:Array;
+        //                var additionalInfoPipe:Array;
+        //                testsToRun.forEach(function (testRule:Object, ...etc):void {
+        //
+        //                    // Loop through all the test rules
+        //                    localFailingRuleInfo = null;
+        //                    localFailingCriteria = null;
+        //
+        //                    var ruleCriteria:Array = testRule.acceptanceCriteria as Array;
+        //                    if (ruleCriteria.length) {
+        //
+        //                        // Loop through all the test criteria within the current test rule
+        //                        ruleCriteria.forEach(function (ruleCriterion:Object, ...arg):void {
+        //                            additionalInfoPipe = [];
+        //
+        //                            // Execute the function that validates each test criterion
+        //                            var fn:Function = ($this[ruleCriterion.functionName] as Function);
+        //
+        //                            var args:Array = ruleCriterion.params;
+        //                            if (!isNaN(testRule.result)) {
+        //                                args = args.concat(testRule.result);
+        //                            }
+        //                            args.push(testsToRun, additionalInfoPipe);
+        //                            var criterionPassed:Boolean = fn.apply(null, args);
+        //                            ruleCriterion.criterionPassed = criterionPassed;
+        //
+        //                            // Any failing criterion fails the rule as a whole and the test suite
+        //                            // as a whole
+        //                            if (!criterionPassed) {
+        //                                testRule.acceptancePassed = false;
+        //                                testsSuitePassed = false;
+        //                                if (!localFailingRuleInfo) {
+        //                                    numFailingRules++;
+        //                                    localFailingRuleInfo = 'FAILED RULE: "' +
+        //                                            testRule.name +
+        //                                            (testRule.description ? ('. ' + testRule.description) : '') +
+        //                                            '"' +
+        //                                            ((testRule.pitches && testRule.pitches.length) ? (
+        //                                                    ' — score computed by analyzer: ' +
+        //                                                    testRule.result +
+        //                                                    '. Has upper root: ' +
+        //                                                    !!testRule.hasUpperRoot
+        //                                            ) : '');
+        //                                }
+        //                                if (!localFailingCriteria) {
+        //                                    localFailingCriteria = [];
+        //                                }
+        //
+        //                                // We do not stop after the first failing test criteria, because there can be several
+        //                                // criteria falling, and we want to provide insight about every one of them.
+        //                                localFailingCriteria.push(
+        //                                        'FAILED CRITERION: ' +
+        //                                        ruleCriterion.description +
+        //                                        ((additionalInfoPipe.length > 0) ?
+        //                                                '. ADDITIONAL INFO — ' + additionalInfoPipe.join('; ') :
+        //                                                '') +
+        //                                        '.'
+        //                                );
+        //                            }
+        //                        });
+        //
+        //                        // Rule only succeeds as a whole if there were no failing criteria
+        //                        if (testRule.acceptancePassed === undefined) {
+        //                            testRule.acceptancePassed = true;
+        //                        }
+        //
+        //                        // If applicable, prepare the local report for this failing rule and its underlying failing
+        //                        // criteria.
+        //                        if (localFailingRuleInfo) {
+        //                            failingRules.push(localFailingRuleInfo + '\n\t' + localFailingCriteria.join('\n\t'));
+        //                        }
+        //                    }
+        //                });
+        //
+        //                // Print results
+        //                _logger.printHeader();
+        //                _logger.printDashes();
+        //                _print('TESTING ' + testsName, (testsSuitePassed ? 'PASSED' : 'FAILED'));
+        //                _logger.printDashes();
+        //                _print('There',
+        //                        ((numFailingRules == 1) ? 'was' : 'were'),
+        //                        numFailingRules,
+        //                        'failing',
+        //                        ((numFailingRules == 1) ? 'rule' : 'rules') +
+        //                        ((numFailingRules > 0) ? ':' : '.')
+        //                );
+        //                if (numFailingRules > 0) {
+        //                    _print('\n' + failingRules.join('\n\n'));
+        //                }
+        //            }
+        //            return testsSuitePassed;
+        //        }
+
+        //        private function _isMaxScore(score:Number, ...unusedArgs):Boolean {
+        //            return (score == MAX_SCORE);
+        //        }
+
+        //        private function _isAugmentedOrQuartalScore(score:Number, ...unusedArgs):Boolean {
+        //            return (score == AUGMENTED_OR_QUARTAL_SCORE);
+        //        }
+
+        //        private function _isDiminishedScore(score:Number, ...unusedArgs):Boolean {
+        //            return (score == DIMINISHED_SCORE);
+        //        }
+
+        //        private function _isScoreLessThan(otherRuleName:String, score:Number, testsBase:Array, infoPipe:Array = null):Boolean {
+        //            if (isNaN(score)) {
+        //                _print('Given score is not a number. Cannot compare.');
+        //                return false;
+        //            }
+        //            var matchingRules:Object = testsBase.filter(function (test:Object, ...etc):Boolean {
+        //                return (test.name == otherRuleName);
+        //            });
+        //            if (!matchingRules.length) {
+        //                _print('ERROR: could not find test rule with name "' + otherRuleName + '".');
+        //                return false;
+        //            }
+        //            if (matchingRules.length > 1) {
+        //                _print('WARNING: found', matchingRules.length, 'test rules with name "' + otherRuleName + '". Only using first.');
+        //            }
+        //            var matchingRule:Object = (matchingRules[0] as Object);
+        //            var otherRuleScore:Number = (matchingRule.result as Number);
+        //            var otherRuleUpperRoot:Object = !!matchingRule.hasUpperRoot;
+        //            if (infoPipe) {
+        //                infoPipe.push('Score of ' + otherRuleName + ': ' + otherRuleScore);
+        //                infoPipe.push('Has ' + otherRuleName + ' upper root: ' + otherRuleUpperRoot);
+        //                if (matchingRule.description) {
+        //                    infoPipe.push('Description of ' + otherRuleName + ': "' + ((matchingRule.description || '') as String).toLowerCase() + '"');
+        //                }
+        //            }
+        //            if (isNaN(otherRuleScore)) {
+        //                _print('ERROR: could not retrieve score for test rule "' + matchingRule.name + '". Cannot compare.');
+        //                return false;
+        //            }
+        //            return (score < otherRuleScore);
+        //        }
+
+        //        private function _isConsonanceAcceptable(chord:IMusicUnit, referenceConsonance:uint, ...unusedArgs):Boolean {
+        //            return CommonMusicUtils.isConsonanceAcceptable(chord, referenceConsonance);
+        //        }
+
+        //        private function _isConsonanceNotAcceptable(chord:IMusicUnit, referenceConsonance:uint, ...unusedArgs):Boolean {
+        //            return !CommonMusicUtils.isConsonanceAcceptable(chord, referenceConsonance);
+        //        }
+
+        private function _print(...args):void {
+            _messages += '▸ ' + args.join(' ') + '\n';
+            _logger.print.apply(_logger, args);
+        }
+        ]]>
+    </fx:Script>
+
+    <s:Label text="Structured information" left="10" top="30"/>
+    <s:List id="structuredInfoList" width="{width * 0.4 - 15}" top="50" bottom="10" left="10"
+            dataProvider="{_listDS}"/>
+
+    <s:Label text="Logs" left="{width * 0.4 + 5}" top="30"/>
+    <s:TextArea id="logsTextArea" text="{_messages}" lineHeight="22" fontSize="15" fontFamily="Consolas"
+                editable="false"
+                width="{width * 0.6 - 15}" left="{width * 0.4 + 5}" top="50" bottom="10"/>
+
+</s:WindowedApplication>

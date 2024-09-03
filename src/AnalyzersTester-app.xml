@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<application xmlns="http://ns.adobe.com/air/application/50.0">
+
+	<!-- IMPORTANT NOTE:
+	You can safely edit this file except for the "<content>analyzerstester.swf</content>" tag, which
+	is overriden by SIRIUS on each build. -->
+
+	<!-- A universally unique application identifier. Must be unique across all AIR applications.
+	Using a reverse DNS-style name as the id is recommended, eg.:
+	com.example.ExampleApplication. -->
+	<id>ec50d805-1996-4f2b-9548-a4049d7b67e0</id>
+
+	<!-- Used as the filename for the application. Don't add a path here. Required. -->
+	<filename>AnalyzersTester</filename>
+
+	<!-- The name that is displayed in the AIR application installer. -->
+	<name>AnalyzersTester</name>
+	
+	<!-- A string value of the format <0-999>.<0-999>.<0-999> that represents application
+	version -->
+	<versionNumber>1.0.0</versionNumber>
+
+	<!-- Description. Optional. -->
+	<description>AnalyzersTester application by Claudius Iacob</description>
+
+	<!-- Copyright information -->
+	<copyright>2022</copyright>
+
+	<initialWindow>
+		<!-- The full path to the application's (main) SWF file. 
+		THIS IS OVERRIDEN BY SIRIUS ON EACH BUILD. -->
+		<content>d:\_DEV_\_GIT_\claudius-iacob-eu\maidens-analyzers-tester\bin\AnalyzersTester.swf</content>
+
+		<!-- The type of system chrome to use, either "standard" or "none". -->
+		<systemChrome>standard</systemChrome>
+
+		<!-- Whether the window is transparent. Only applicable when systemChrome is none.-->
+		<transparent>false</transparent>
+
+		<!-- Whether the user can minimize the window. -->
+		<minimizable>true</minimizable>
+
+		<!-- Whether the user can maximize the window. -->
+		<maximizable>true</maximizable>
+
+		<!-- Whether the user can resize the window. -->
+		<resizable>true</resizable>
+
+		<!-- Display Resolution for the app (either "standard" or "high"). -->
+		<requestedDisplayResolution>high</requestedDisplayResolution>
+    </initialWindow>
+
+	<!-- Boiler plate code. This must  be always "extendedDesktop" -->
+	<supportedProfiles>extendedDesktop</supportedProfiles>
+</application>

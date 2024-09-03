@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+<s:DataRenderer xmlns:fx="http://ns.adobe.com/mxml/2009"
+                xmlns:s="library://ns.adobe.com/flex/spark"
+                initialize="_onInitialize()"
+                width="100%">
+
+    <s:layout>
+        <s:VerticalLayout padding="10" gap="15" horizontalAlign="justify"/>
+    </s:layout>
+
+    <fx:Script>
+        <![CDATA[
+        import eu.claudius.iacob.constants.ClefTypes;
+        import eu.claudius.iacob.constants.Keys;
+        import eu.claudius.iacob.music.writer.ScoreWriter;
+        import eu.claudius.iacob.testing.ui.CommonStyles;
+
+        import ro.ciacob.maidens.generators.core.MusicUnit;
+        import ro.ciacob.maidens.generators.core.interfaces.IMusicPitch;
+        import ro.ciacob.maidens.generators.core.interfaces.IMusicUnit;
+
+        private static const SCORE_SETTINGS:Object = {};
+        private static const SCORE_WRITERS:Object = {};
+        private static const SCORE_HEIGHT:Number = 150;
+        private static const CONTEXT_WRITER:String = 'contextWriterUid';
+        private static const TEST_VALUES_WRITER:String = 'testValuesWriterUid';
+
+        private function get SCORE_WIDTH():Number {
+            return (width - 40 - CommonStyles.HEADER_CELL_WIDTH);
+        }
+
+        private var _testContext:Vector.<IMusicUnit>;
+        private var _testValues:Vector.<IMusicUnit>;
+
+
+        override public function set data(value:Object):void {
+            super.data = value;
+            if (value) {
+                _testContext = (value.previousContent as Vector.<IMusicUnit>);
+                if (_testContext) {
+                    _renderMusic(_testContext, musicContext, CONTEXT_WRITER);
+                }
+                _testValues = (value.testValues as Vector.<IMusicUnit>);
+                if (_testValues) {
+                    _renderMusic(_testValues, musicTestValues, TEST_VALUES_WRITER);
+                }
+            }
+        }
+
+        private function _renderMusic(units:Vector.<IMusicUnit>, canvas:Sprite, writerUid:String):void {
+            var writer:ScoreWriter;
+            if (!(writerUid in SCORE_WRITERS)) {
+                writer = new ScoreWriter(canvas, SCORE_SETTINGS);
+                SCORE_WRITERS[writerUid] = writer;
+            }
+            writer = SCORE_WRITERS[writerUid] as ScoreWriter;
+            writer.wipeOut();
+            if (units.length) {
+                writer.putStaff(SCORE_WIDTH, 10 + CommonStyles.HEADER_CELL_WIDTH, 25);
+                writer.putClef(ClefTypes.TREBLE);
+                var midiValues:Vector.<uint> = new Vector.<uint>;
+                for each (var unit:MusicUnit in units) {
+                    midiValues.length = 0;
+                    for each (var pitch:IMusicPitch in unit.pitches) {
+                        midiValues.push(Math.max(0, pitch.midiNote));
+                    }
+                    writer.putCluster(null, midiValues);
+                }
+                writer.write();
+            }
+        }
+
+        private function _onInitialize():void {
+            SCORE_SETTINGS[Keys.HORIZONTAL_PADDING] = 10;
+            SCORE_SETTINGS[Keys.INNER_CLUSTER_PADDING] = 5;
+        }
+        ]]>
+    </fx:Script>
+
+    <s:VGroup width="99%" gap="5" visible="{data.previousContent}"
+              includeInLayout="{data.previousContent}">
+        <s:HGroup width="100%">
+            <s:Label minWidth="{CommonStyles.HEADER_CELL_WIDTH}"
+                     styleName="{CommonStyles.HEADER_STYLE}" text="Test context:"/>
+            <s:Label styleName="{CommonStyles.MAIN_STYLE}" lineBreak="toFit" width="100%"
+                     text="Sample musical content to set the context in which the analyzer operates."/>
+        </s:HGroup>
+        <s:SpriteVisualElement id="musicContext" width="100%" height="{SCORE_HEIGHT}"/>
+    </s:VGroup>
+
+    <s:VGroup width="99%" gap="5" visible="{data.testValues}"
+              includeInLayout="{data.testValues}">
+        <s:HGroup width="100%">
+            <s:Label minWidth="{CommonStyles.HEADER_CELL_WIDTH}"
+                     styleName="{CommonStyles.HEADER_STYLE}" text="Test values:"/>
+            <s:Label styleName="{CommonStyles.MAIN_STYLE}" lineBreak="toFit" width="100%"
+                     text="Each note is a possible continuation of the previous content."/>
+        </s:HGroup>
+        <s:SpriteVisualElement id="musicTestValues" width="100%" height="{SCORE_HEIGHT}"/>
+    </s:VGroup>
+
+    <s:HGroup visible="{data.analyzerResults}"
+              includeInLayout="{data.analyzerResults}">
+        <s:Label minWidth="{CommonStyles.HEADER_CELL_WIDTH}"
+                 styleName="{CommonStyles.HEADER_STYLE}" text="Analyzer Results:"/>
+        <s:Label styleName="{CommonStyles.MAIN_STYLE}" text="{data.analyzerResults.join(', ')}"/>
+    </s:HGroup>
+
+</s:DataRenderer>

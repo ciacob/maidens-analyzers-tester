@@ -1,0 +1,218 @@
+<?xml version="1.0"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+                       xmlns:s="library://ns.adobe.com/flex/spark"
+                       xmlns:bbtl="eu.claudius.iacob.testing.ui.*"
+                       initialize="_onInitialize(event)" width="1366" height="768"
+                       displayStateChange="_onDisplayStateChange(event)">
+    <fx:Script>
+        <![CDATA[
+        import eu.claudius.iacob.testing.TestRunner;
+        import eu.claudius.iacob.testing.common.ListingEvent;
+        import eu.claudius.iacob.testing.common.StatesRegistry;
+        import eu.claudius.iacob.testing.common.TestRunnerEvent;
+        import eu.claudius.iacob.testing.common.TestingUtils;
+        import eu.claudius.iacob.testing.interfaces.IRunnable;
+        import eu.claudius.iacob.testing.interfaces.ITestRunner;
+        import eu.claudius.iacob.testing.interfaces.IValidationResult;
+        import eu.claudius.iacob.testing.ui.ListItemWrapper;
+        import eu.claudius.iacob.testing.ui.TestLibraryFonts;
+        import eu.claudius.iacob.testing.ui.icons.ArrowIcon;
+
+        import mx.events.FlexEvent;
+
+        import org.apache.flex.collections.ArrayList;
+
+        import ro.ciacob.desktop.debug.Logger;
+        import ro.ciacob.desktop.debug.LoggerConfig;
+
+        import spark.events.IndexChangeEvent;
+
+        import tests.common.AnalyzerTestCaseDetails;
+
+        import tests.common.AnalyzerTestCaseDetails;
+
+        import tests.melody.balance.BasicCase1;
+        import tests.melody.balance.BasicCase2;
+        import tests.melody.balance.MelodicBalanceTest;
+        import tests.melody.balance.MelodyTestSuite;
+        import tests.melody.balance.PerfectPrimeCase1;
+        import tests.melody.balance.RestsCase1;
+
+        private static const LOGS_DIR_NAME:String = 'logs';
+        private static const LOGGING_ENABLED:Boolean = false;
+
+        [Bindable]
+        private var _messages:String = '';
+
+        [Bindable]
+        private var _listDS:ArrayList = new ArrayList;
+
+        [Bindable]
+        private var _queueReady:Boolean;
+
+        [Bindable]
+        private var _processing:Boolean;
+
+        [Bindable]
+        private var _selectedWrapper:ListItemWrapper;
+
+        private var _logger:Logger;
+        private var _runner:ITestRunner;
+
+
+        /**
+         * Hack to force dynamic widths in the page to recalculate on maximize/restore.
+         */
+        private function _onDisplayStateChange(event:NativeWindowDisplayStateEvent):void {
+            var onRedraw:Function = function (event:FlexEvent):void {
+                removeEventListener(FlexEvent.UPDATE_COMPLETE, onRedraw);
+                width += 0.1;
+            }
+            addEventListener(FlexEvent.UPDATE_COMPLETE, onRedraw);
+        }
+
+        /**
+         * Main Entry Point.
+         * Executed after child components are initialized but not measured or drawn on screen.
+         * @param event
+         */
+        private function _onInitialize(event:FlexEvent):void {
+
+            // Initialize logger
+            var appDirParentTokens:Array = File.applicationDirectory.nativePath.split(File.separator);
+            appDirParentTokens.length -= 1;
+            appDirParentTokens.push(LOGS_DIR_NAME);
+            var logsDir:File = new File(appDirParentTokens.join(File.separator));
+            const LOGGING_MODE:int = (LoggerConfig.CONSOLE | LoggerConfig.FILE);
+            var config:LoggerConfig = new LoggerConfig(LOGGING_ENABLED, LOGGING_MODE, logsDir);
+            _logger = new Logger(config);
+
+            // Initialize UI
+            statusText.setStyle('fontSize', 15);
+            statusText.setStyle('fontFamily', 'Consolas');
+
+            // Initialize and populate the runner.
+            var melodicTest:MelodicBalanceTest = new MelodicBalanceTest;
+            melodicTest.testCases.push(
+                    new BasicCase1,
+                    new BasicCase2,
+                    new RestsCase1,
+                    new PerfectPrimeCase1
+            );
+            var melodicSuite:MelodyTestSuite = new MelodyTestSuite;
+            melodicSuite.tests.push(melodicTest);
+            _runner = new TestRunner(
+                    'Analyzers Test Runners',
+                    'Runs tests to help proof the various analyzers used by MAIDENS.'
+            );
+            _runner.runnables.push(
+                    melodicSuite
+            );
+            _runner.addEventListener(ListingEvent.LIST_READY, _onListReady);
+            _runner.addEventListener(TestRunnerEvent.CASE_DONE, _onCaseDone);
+            _runner.addEventListener(TestRunnerEvent.ALL_DONE, _onAllDone);
+            _runner.compileTestQueue();
+        }
+
+        private function _doRun():void {
+            _processing = true;
+            _messages = '';
+            _runner.execute();
+        }
+
+        private function _doStop():void {
+            _runner.abort();
+        }
+
+        private function _onCaseDone(event:TestRunnerEvent):void {
+            var result:IValidationResult;
+            var caseState:int;
+            var isCaseSkipped:Boolean = (event && (result = event.result) &&
+                    (caseState = result.state) == StatesRegistry.STATE_SKIPPED);
+
+            // Print info.
+            // We don't print info about skipped cases, to keep the log clean.
+            if (isCaseSkipped) {
+                return;
+            }
+            _print(TestingUtils.formatOutput(event));
+
+            // Adjust appearance of list items.
+            if (event && result) {
+                var runnable:IRunnable = result.testCase;
+                var wrapper:ListItemWrapper = TestingUtils.getWrapperOf(runnable);
+                if (wrapper) {
+                    wrapper.state = caseState;
+                    wrapper.error = result.error;
+                    wrapper.time = result.testTime;
+                    wrapper.duration = result.testDuration;
+                    _selectedWrapper = wrapper;
+                    structuredInfoList.selectedIndex = _listDS.getItemIndex(wrapper);
+                }
+            }
+        }
+
+        private function _onAllDone(event:TestRunnerEvent):void {
+            _onCaseDone(event);
+            _processing = false;
+        }
+
+        private function _onListReady(event:ListingEvent):void {
+            _listDS.removeAll();
+            event.queue.forEach(function (item:IRunnable, ...etc):void {
+                _listDS.addItem(new ListItemWrapper(item));
+            });
+            _queueReady = true;
+        }
+
+        private function _onListSelectionChanged(event:IndexChangeEvent):void {
+            var selectedIndex:int = event.newIndex;
+            _selectedWrapper = (selectedIndex >= 0) ?
+                    _listDS.getItemAt(selectedIndex) as ListItemWrapper : null;
+        }
+
+        private function _print(...args):void {
+            _messages += '▸ ' + args.join(' ') + '\n';
+            _logger.print.apply(_logger, args);
+        }
+        ]]>
+    </fx:Script>
+
+    <!-- RIBBON -->
+    <s:Button id="runButton" label="Run tests"
+              fontFamily="{TestLibraryFonts.NOTO_SANS_EMBEDDED}"
+              fontSize="14" fontWeight="bold" icon="{ArrowIcon}"
+              left="10" top="10" height="36"
+              click="_doRun()"
+              enabled="{!_processing &amp;&amp; _queueReady}"/>
+
+    <s:Button id="stopButton" label="Stop"
+              fontFamily="{TestLibraryFonts.NOTO_SANS_EMBEDDED}"
+              fontSize="14" top="10" left="{runButton.x + runButton.width + 8}"
+              enabled="{_processing &amp;&amp; _queueReady}"
+              height="36"
+              click="_doStop()"/>
+
+    <!-- PANELS -->
+    <!-- List -->
+    <s:Label text="Test Queue" left="10" top="55" fontSize="13"
+             fontFamily="{TestLibraryFonts.NOTO_SANS_EMBEDDED}"/>
+    <bbtl:RunnablesList id="structuredInfoList" width="{width * 0.3 - 15}" top="75" bottom="10"
+                        left="10" dataProvider="{_listDS}"
+                        change="_onListSelectionChanged(event)"/>
+
+    <!-- Details -->
+    <s:Label text="Selection Details" left="{width * 0.3 + 5}" top="55" fontSize="13"
+             fontFamily="{TestLibraryFonts.NOTO_SANS_EMBEDDED}"/>
+    <bbtl:RunnableDetails id="selectedItemInfo" width="{width * 0.4 - 10}" top="75" bottom="10"
+                          left="{width * 0.3 + 5}" source="{_selectedWrapper}"
+                          detailsRenderer="{new AnalyzerTestCaseDetails}"/>
+
+    <!-- Log -->
+    <s:Label text="Logs" left="{width * 0.7 + 5}" top="55" fontSize="13"
+             fontFamily="{TestLibraryFonts.NOTO_SANS_EMBEDDED}"/>
+    <s:TextArea id="logsTextArea" text="{_messages}" lineHeight="22" fontSize="15"
+                fontFamily="Consolas" editable="false" width="{width * 0.3 - 15}"
+                left="{width * 0.7 + 5}" top="75" bottom="10"/>
+
+</s:WindowedApplication>
